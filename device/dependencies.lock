@@ -1,0 +1,37 @@
+dependencies:
+  espressif/esp_websocket_client:
+    component_hash: c5a067a9fddea370c478017e66fac302f4b79c3d4027e9bdd42a019786cceb92
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.6.1
+  idf:
+    source:
+      type: idf
+    version: 6.0.0
+  relayx/device-cpp:
+    component_hash: 253012fe704328fb98179eaad1a798e6ec077a5b59d2130c95a03c3950ac5358
+    dependencies:
+    - name: espressif/esp_websocket_client
+      registry_url: https://components.espressif.com
+      require: private
+      rules:
+      - if: idf_version >=5.0
+      version: '>=1.0.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 0.1.0
+direct_dependencies:
+- idf
+- relayx/device-cpp
+manifest_hash: 96302c9fb3af20dc249f0eb110817b0efaa66b6c6abac4a94f60282cfd0a7443
+target: esp32
+version: 3.0.0

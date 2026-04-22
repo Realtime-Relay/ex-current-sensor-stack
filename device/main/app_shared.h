@@ -25,8 +25,8 @@
 // Configuration — edit before flashing, or lift into Kconfig
 // ----------------------------------------------------------------------------
 
-#define WIFI_SSID          "Starlink Enhanced"
-#define WIFI_PASS          "preetham.1964"
+#define WIFI_SSID          ""
+#define WIFI_PASS          ""
 
 // I2C bus for INA219 (and any future I2C sensors).
 // ESP32 default pins: SDA=GPIO21, SCL=GPIO22.

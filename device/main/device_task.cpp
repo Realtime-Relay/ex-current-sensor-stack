@@ -1,6 +1,7 @@
 #include "device_task.h"
 #include "actuator.h"
 #include "app_shared.h"
+#include "status_led.h"
 
 #include <cinttypes>
 #include <cstdio>
@@ -129,15 +130,19 @@ static void device_task(void *) {
             case RELAY_STATUS_CONNECTED:
                 ESP_LOGI(TAG, "Device connected");
                 xEventGroupSetBits(g_state_events, DEVICE_READY_BIT);
+                status_led_set(LedMode::SOLID);
                 break;
             case RELAY_STATUS_DISCONNECTED:
                 ESP_LOGW(TAG, "Device disconnected");
+                status_led_set(LedMode::BLINK);
                 break;
             case RELAY_STATUS_RECONNECTING:
                 ESP_LOGW(TAG, "Device reconnecting...");
+                status_led_set(LedMode::BLINK);
                 break;
             case RELAY_STATUS_RECONNECTED:
                 ESP_LOGI(TAG, "Device reconnected");
+                status_led_set(LedMode::SOLID);
                 break;
             default:
                 break;

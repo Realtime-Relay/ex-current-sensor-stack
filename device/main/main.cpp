@@ -16,6 +16,7 @@
 #include "app_shared.h"
 #include "device_task.h"
 #include "sensor_task.h"
+#include "status_led.h"
 #include "wifi.h"
 
 static const char *TAG = "main";
@@ -38,6 +39,11 @@ extern "C" void app_main(void) {
     // Relay is initialized before WiFi so it's guaranteed OFF the moment the
     // GPIO is usable — no window where a floating pin could energize the coil.
     actuator_init();
+
+    // LED starts in OFF mode; device_task flips it to SOLID / BLINK as the
+    // RelayX connection state changes.
+    status_led_init();
+    status_led_start();
 
     wifi_init_and_wait();
 

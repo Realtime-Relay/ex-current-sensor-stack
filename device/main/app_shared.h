@@ -44,6 +44,15 @@
 #define RELAY_GPIO          GPIO_NUM_26
 #define RELAY_ACTIVE_HIGH   0
 
+// Status LED — reflects RelayX connection state.
+//   OFF:   before first connect()
+//   SOLID: connected
+//   BLINK: disconnected or reconnecting (200 ms period)
+// GPIO 2 is the onboard LED on most ESP32-WROOM dev boards. Swap the pin
+// and polarity to use a discrete LED wired through a current-limiting resistor.
+#define STATUS_LED_GPIO         GPIO_NUM_2
+#define STATUS_LED_ACTIVE_HIGH  1
+
 // RPC names
 #define RPC_UPDATE_RATE    "updateSampleRate"
 #define RPC_SET_STATE      "state"
@@ -56,7 +65,7 @@
 // Sample rate bounds — all in milliseconds.
 constexpr uint32_t SAMPLE_RATE_MIN_MS     = 100;      // 100 ms  — fast
 constexpr uint32_t SAMPLE_RATE_MAX_MS     = 600000;   // 10 min  — slow
-constexpr uint32_t SAMPLE_RATE_DEFAULT_MS = 10000;    // 10 s    — default
+constexpr uint32_t SAMPLE_RATE_DEFAULT_MS = 200;      // 200 ms  — default
 
 // ----------------------------------------------------------------------------
 // Shared state

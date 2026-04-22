@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { TopBar } from "./components/TopBar.jsx";
 import { DeviceCard } from "./components/DeviceCard.jsx";
-import { LiveChart } from "./components/Charts.jsx";
+import { LiveChart } from "./components/LiveChart.jsx";
 import { EventsCard, AlertsCard } from "./components/EventsAlerts.jsx";
 import { useSimState } from "./hooks/useSimState.js";
 

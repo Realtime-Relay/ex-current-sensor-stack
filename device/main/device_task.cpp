@@ -39,12 +39,14 @@ static void rpc_update_sample_rate(relay_rpc_request_t *req) {
 
     if (!payload) {
         rpc_send_error(req, "invalid or empty JSON payload");
+        g_device->log.error("%s: invalid or empty JSON payload", RPC_UPDATE_RATE);
         return;
     }
 
     cJSON *rate_item = cJSON_GetObjectItem(payload, "rate");
     if (!rate_item || !cJSON_IsNumber(rate_item)) {
         rpc_send_error(req, "missing or non-numeric 'rate'");
+        g_device->log.error("%s: missing or non-numeric 'rate'", RPC_UPDATE_RATE);
         cJSON_Delete(payload);
         return;
     }
@@ -57,6 +59,9 @@ static void rpc_update_sample_rate(relay_rpc_request_t *req) {
                       "rate must be between %" PRIu32 " and %" PRIu32 " ms",
                       SAMPLE_RATE_MIN_MS, SAMPLE_RATE_MAX_MS);
         rpc_send_error(req, buf);
+        g_device->log.warn("%s: rate %d out of range [%" PRIu32 ", %" PRIu32 "]",
+                           RPC_UPDATE_RATE, requested,
+                           SAMPLE_RATE_MIN_MS, SAMPLE_RATE_MAX_MS);
         cJSON_Delete(payload);
         return;
     }
@@ -64,6 +69,7 @@ static void rpc_update_sample_rate(relay_rpc_request_t *req) {
     g_sample_rate_ms.store(static_cast<uint32_t>(requested),
                            std::memory_order_relaxed);
     ESP_LOGI(TAG, "Sample rate updated to %d ms", requested);
+    g_device->log.info("sample rate updated to %d ms", requested);
 
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddNumberToObject(resp, "rate", requested);
@@ -91,6 +97,7 @@ static void rpc_set_state(relay_rpc_request_t *req) {
 
     if (!payload) {
         rpc_send_error(req, "invalid or empty JSON payload");
+        g_device->log.error("%s: invalid or empty JSON payload", RPC_SET_STATE);
         return;
     }
 
@@ -103,11 +110,13 @@ static void rpc_set_state(relay_rpc_request_t *req) {
         target = on_item->valueint != 0;
     } else {
         rpc_send_error(req, "expected { \"on\": true | false }");
+        g_device->log.error("%s: expected { \"on\": true | false }", RPC_SET_STATE);
         cJSON_Delete(payload);
         return;
     }
 
     actuator_set(target);
+    g_device->log.info("relay set %s", target ? "ON" : "OFF");
 
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddBoolToObject(resp, "on", target);
@@ -131,18 +140,22 @@ static void device_task(void *) {
                 ESP_LOGI(TAG, "Device connected");
                 xEventGroupSetBits(g_state_events, DEVICE_READY_BIT);
                 status_led_set(LedMode::SOLID);
+                g_device->log.info("device connected");
                 break;
             case RELAY_STATUS_DISCONNECTED:
                 ESP_LOGW(TAG, "Device disconnected");
                 status_led_set(LedMode::BLINK);
+                g_device->log.warn("device disconnected");
                 break;
             case RELAY_STATUS_RECONNECTING:
                 ESP_LOGW(TAG, "Device reconnecting...");
                 status_led_set(LedMode::BLINK);
+                g_device->log.warn("device reconnecting");
                 break;
             case RELAY_STATUS_RECONNECTED:
                 ESP_LOGI(TAG, "Device reconnected");
                 status_led_set(LedMode::SOLID);
+                g_device->log.info("device reconnected");
                 break;
             default:
                 break;
@@ -171,7 +184,7 @@ static void device_task(void *) {
 
     while (true) {
         g_device->process();
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 

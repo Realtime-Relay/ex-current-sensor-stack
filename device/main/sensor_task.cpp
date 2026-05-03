@@ -13,6 +13,8 @@
 
 #include "driver/i2c_master.h"
 
+#include "cJSON.h"
+
 static const char *TAG = "sensor-task";
 
 static i2c_master_bus_handle_t s_bus = nullptr;
@@ -61,16 +63,19 @@ static void publish_readings(const ina219_readings &r) {
     err = g_device->telemetry.publish_number(TELEMETRY_POWER, r.power_mw);
     if (err != RELAY_OK && err != RELAY_ERR_BUFFERED) {
         ESP_LOGW(TAG, "publish %s failed: %d", TELEMETRY_POWER, err);
+        g_device->log.warn("publish %s failed: %d", TELEMETRY_POWER, err);
     }
 
     err = g_device->telemetry.publish_number(TELEMETRY_CURRENT, current_ma_abs);
     if (err != RELAY_OK && err != RELAY_ERR_BUFFERED) {
         ESP_LOGW(TAG, "publish %s failed: %d", TELEMETRY_CURRENT, err);
+        g_device->log.warn("publish %s failed: %d", TELEMETRY_CURRENT, err);
     }
 
     err = g_device->telemetry.publish_number(TELEMETRY_VOLT, r.bus_voltage_v);
     if (err != RELAY_OK && err != RELAY_ERR_BUFFERED) {
         ESP_LOGW(TAG, "publish %s failed: %d", TELEMETRY_VOLT, err);
+        g_device->log.warn("publish %s failed: %d", TELEMETRY_VOLT, err);
     }
 }
 
@@ -87,6 +92,8 @@ static void sensor_task(void *) {
                         pdFALSE, pdTRUE, portMAX_DELAY);
     ESP_LOGI(TAG, "Sensor task started (default_rate=%" PRIu32 " ms)",
              SAMPLE_RATE_DEFAULT_MS);
+    g_device->log.info("sensor task started (rate=%" PRIu32 " ms)",
+                       SAMPLE_RATE_DEFAULT_MS);
 
     while (true) {
         ina219_readings r;
@@ -96,8 +103,33 @@ static void sensor_task(void *) {
             ESP_LOGI(TAG, "V=%.3fV  I=%.2fmA  P=%.2fmW",
                      r.bus_voltage_v, std::fabs(r.current_ma), r.power_mw);
             publish_readings(r);
+
+            // Detect AC load presence via current draw while the relay is
+            // energized. Hysteresis: OFF below 2 mA, ON above 6 mA.
+            // OFF events stream every loop while we're in OFF; ON fires once
+            // on the rising transition.
+            static bool ac_off = false;
+            const float current_ma_abs = std::fabs(r.current_ma);
+            const bool relay_on = g_relay_on.load(std::memory_order_relaxed);
+
+            if (relay_on && current_ma_abs < AC_OFF_THRESHOLD_MA) {
+                cJSON *evt = cJSON_CreateObject();
+                cJSON_AddStringToObject(evt, EVENT_FIELD_AC_STATE, AC_STATE_OFF);
+                g_device->event.send_json(EVENT_POWER_STATE, evt);
+                cJSON_Delete(evt);
+                ac_off = true;
+            } else if (relay_on && current_ma_abs > AC_ON_THRESHOLD_MA && ac_off) {
+                cJSON *evt = cJSON_CreateObject();
+                cJSON_AddStringToObject(evt, EVENT_FIELD_AC_STATE, AC_STATE_ON);
+                g_device->event.send_json(EVENT_POWER_STATE, evt);
+                cJSON_Delete(evt);
+                ac_off = false;
+            } else if (!relay_on) {
+                ac_off = false;
+            }
         } else {
             ESP_LOGW(TAG, "INA219 read failed: %s", esp_err_to_name(err));
+            g_device->log.error("INA219 read failed: %s", esp_err_to_name(err));
         }
 
         uint32_t rate_ms = g_sample_rate_ms.load(std::memory_order_relaxed);
